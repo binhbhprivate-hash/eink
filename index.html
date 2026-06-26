@@ -11,7 +11,16 @@
     <div class="max-w-md mx-auto">
         <h1 class="text-2xl font-bold mb-6 text-white text-center">E-ink BLE Controller</h1>
         
-        <button id="connectBle" class="w-full py-4 bg-indigo-600 rounded-xl font-bold mb-6 hover:bg-indigo-500 transition">Kết nối trực tiếp</button>
+        <button id="connectBle" class="w-full py-4 bg-indigo-600 rounded-xl font-bold mb-6 hover:bg-indigo-500 transition">Kết nối thiết bị</button>
+        
+        <!-- Dropdown chọn đặc tính -->
+        <div class="mb-6">
+            <label class="block text-sm mb-2 text-slate-400">Chọn Characteristic để gửi lệnh:</label>
+            <select id="charSelector" class="w-full bg-slate-800 p-3 rounded-lg border border-slate-600 text-white mb-4">
+                <option value="">Chưa có đặc tính nào...</option>
+            </select>
+            <button onclick="setCharacteristic()" class="w-full py-2 bg-slate-700 rounded-lg text-sm font-bold">Xác nhận đặc tính này</button>
+        </div>
         
         <div class="grid grid-cols-2 gap-4 mb-6">
             <button onclick="sendCommandChain(['e102', 'e2'])" class="py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold">Clock & E2</button>
@@ -21,18 +30,19 @@
         </div>
 
         <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-            <label class="block text-sm mb-2 text-slate-400">Gửi lệnh tùy chỉnh:</label>
             <input type="text" id="commandInput" placeholder="Ví dụ: e102" class="w-full bg-slate-900 p-3 rounded-lg mb-4 border border-slate-600 text-white">
             <button onclick="sendRawCommand()" class="w-full py-3 bg-emerald-600 rounded-lg font-bold">Gửi lệnh</button>
         </div>
 
         <div id="logContainer" class="mt-6 h-40 overflow-y-auto text-xs text-emerald-400 bg-black p-4 rounded-lg border border-slate-700">
-            <div>Sẵn sàng kết nối trực tiếp...</div>
+            <div>Sẵn sàng...</div>
         </div>
     </div>
 
     <script>
+        let allCharacteristics = [];
         let bleCharacteristic = null;
+        const charSelector = document.getElementById('charSelector');
         const logContainer = document.getElementById('logContainer');
 
         function addLog(msg) {
@@ -42,39 +52,34 @@
 
         document.getElementById('connectBle').onclick = async () => {
             try {
+                allCharacteristics = [];
+                charSelector.innerHTML = "";
                 addLog("Đang quét thiết bị...");
-                const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
-                
-                addLog("Đã chọn: " + device.name);
+                const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] });
                 const server = await device.gatt.connect();
-                addLog("Kết nối GATT thành công!");
-                
                 const services = await server.getPrimaryServices();
-                addLog("Tìm thấy " + services.length + " dịch vụ.");
-
-                let found = false;
-                for (const service of services) {
-                    const characteristics = await service.getCharacteristics();
-                    for (const char of characteristics) {
-                        // Kiểm tra nếu đặc tính có quyền WRITE
-                        if (char.properties.write || char.properties.writeWithoutResponse) {
-                            bleCharacteristic = char;
-                            addLog("Đã tìm thấy Characteristic có quyền GHI: " + char.uuid);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) break;
-                }
                 
-                if (!found) addLog("Không tìm thấy đặc tính có quyền GHI nào!");
-            } catch (e) { 
-                addLog("Lỗi: " + e.message);
-            }
+                for (const service of services) {
+                    const chars = await service.getCharacteristics();
+                    for (const char of chars) {
+                        allCharacteristics.push(char);
+                        charSelector.innerHTML += `<option value="${allCharacteristics.length - 1}">${char.uuid}</option>`;
+                    }
+                }
+                addLog("Tìm thấy " + allCharacteristics.length + " đặc tính. Hãy chọn một cái!");
+            } catch (e) { addLog("Lỗi: " + e.message); }
         };
 
+        function setCharacteristic() {
+            const idx = charSelector.value;
+            if (idx !== "") {
+                bleCharacteristic = allCharacteristics[idx];
+                addLog("Đã chọn: " + bleCharacteristic.uuid);
+            }
+        }
+
         async function sendCommandChain(commands) {
-            if (!bleCharacteristic) return alert("Chưa kết nối!");
+            if (!bleCharacteristic) return alert("Bạn chưa chọn Characteristic!");
             const encoder = new TextEncoder();
             for (const cmd of commands) {
                 try {
@@ -85,15 +90,8 @@
             }
         }
 
-        async function sendCommand(cmd) {
-            sendCommandChain([cmd]);
-        }
-
-        async function sendRawCommand() {
-            if (!bleCharacteristic) return alert("Chưa kết nối!");
-            const val = document.getElementById('commandInput').value;
-            sendCommand(val);
-        }
+        async function sendCommand(cmd) { sendCommandChain([cmd]); }
+        async function sendRawCommand() { sendCommand(document.getElementById('commandInput').value); }
     </script>
 </body>
 </html>

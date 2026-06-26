@@ -43,31 +43,31 @@
         document.getElementById('connectBle').onclick = async () => {
             try {
                 addLog("Đang quét thiết bị...");
-                // Bỏ hoàn toàn optionalServices để tránh lỗi UUID lúc bắt đầu
-                const device = await navigator.bluetooth.requestDevice({ 
-                    acceptAllDevices: true
-                });
+                const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
                 
                 addLog("Đã chọn: " + device.name);
                 const server = await device.gatt.connect();
-                addLog("Kết nối GATT thành công! Đang truy vấn Service...");
+                addLog("Kết nối GATT thành công!");
                 
-                // Lấy toàn bộ dịch vụ có sẵn thay vì chỉ định UUID
                 const services = await server.getPrimaryServices();
                 addLog("Tìm thấy " + services.length + " dịch vụ.");
 
-                // Thử tìm service khớp với đuôi ffe0
-                let targetService = services.find(s => s.uuid.includes('ffe0'));
-                
-                if (!targetService) {
-                    addLog("Không tìm thấy Service ffe0. Đang thử dịch vụ đầu tiên...");
-                    targetService = services[0];
+                let found = false;
+                for (const service of services) {
+                    const characteristics = await service.getCharacteristics();
+                    for (const char of characteristics) {
+                        // Kiểm tra nếu đặc tính có quyền WRITE
+                        if (char.properties.write || char.properties.writeWithoutResponse) {
+                            bleCharacteristic = char;
+                            addLog("Đã tìm thấy Characteristic có quyền GHI: " + char.uuid);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found) break;
                 }
-
-                const characteristics = await targetService.getCharacteristics();
-                bleCharacteristic = characteristics.find(c => c.uuid.includes('ffe1')) || characteristics[0];
                 
-                addLog("Đã kết nối Characteristic: " + bleCharacteristic.uuid);
+                if (!found) addLog("Không tìm thấy đặc tính có quyền GHI nào!");
             } catch (e) { 
                 addLog("Lỗi: " + e.message);
             }

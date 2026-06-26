@@ -13,13 +13,13 @@
         
         <button id="connectBle" class="w-full py-4 bg-indigo-600 rounded-xl font-bold mb-6 hover:bg-indigo-500 transition">Kết nối thiết bị</button>
         
-        <!-- Dropdown chọn đặc tính -->
-        <div class="mb-6">
-            <label class="block text-sm mb-2 text-slate-400">Chọn Characteristic để gửi lệnh:</label>
-            <select id="charSelector" class="w-full bg-slate-800 p-3 rounded-lg border border-slate-600 text-white mb-4">
-                <option value="">Chưa có đặc tính nào...</option>
-            </select>
-            <button onclick="setCharacteristic()" class="w-full py-2 bg-slate-700 rounded-lg text-sm font-bold">Xác nhận đặc tính này</button>
+        <div class="mb-6 space-y-2">
+            <label class="block text-sm text-slate-400">Chọn Characteristic:</label>
+            <select id="charSelector" class="w-full bg-slate-800 p-3 rounded-lg border border-slate-600 text-white"></select>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="setCharacteristic()" class="py-2 bg-slate-700 rounded-lg text-sm font-bold">Xác nhận chọn</button>
+                <button onclick="startNotifications()" class="py-2 bg-yellow-600 rounded-lg text-sm font-bold">Kích hoạt thông báo</button>
+            </div>
         </div>
         
         <div class="grid grid-cols-2 gap-4 mb-6">
@@ -54,7 +54,7 @@
             try {
                 allCharacteristics = [];
                 charSelector.innerHTML = "";
-                addLog("Đang quét thiết bị...");
+                addLog("Đang quét...");
                 const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] });
                 const server = await device.gatt.connect();
                 const services = await server.getPrimaryServices();
@@ -66,7 +66,7 @@
                         charSelector.innerHTML += `<option value="${allCharacteristics.length - 1}">${char.uuid}</option>`;
                     }
                 }
-                addLog("Tìm thấy " + allCharacteristics.length + " đặc tính. Hãy chọn một cái!");
+                addLog("Tìm thấy " + allCharacteristics.length + " đặc tính.");
             } catch (e) { addLog("Lỗi: " + e.message); }
         };
 
@@ -76,6 +76,17 @@
                 bleCharacteristic = allCharacteristics[idx];
                 addLog("Đã chọn: " + bleCharacteristic.uuid);
             }
+        }
+
+        async function startNotifications() {
+            if (!bleCharacteristic) return alert("Chưa chọn!");
+            try {
+                await bleCharacteristic.startNotifications();
+                addLog("Đã kích hoạt thông báo (có thể đánh thức thiết bị)");
+                bleCharacteristic.addEventListener('characteristicvaluechanged', (e) => {
+                    addLog("Thiết bị phản hồi: " + new TextDecoder().decode(e.target.value.buffer));
+                });
+            } catch (e) { addLog("Lỗi thông báo: " + e.message); }
         }
 
         async function sendCommandChain(commands) {

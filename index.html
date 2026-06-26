@@ -11,9 +11,8 @@
     <div class="max-w-md mx-auto">
         <h1 class="text-2xl font-bold mb-6 text-white text-center">E-ink BLE Controller</h1>
         
-        <button id="connectBle" class="w-full py-4 bg-indigo-600 rounded-xl font-bold mb-6 hover:bg-indigo-500 transition">Kết nối Bluetooth</button>
+        <button id="connectBle" class="w-full py-4 bg-indigo-600 rounded-xl font-bold mb-6 hover:bg-indigo-500 transition">Kết nối trực tiếp</button>
         
-        <!-- Các nút chức năng đã giải mã -->
         <div class="grid grid-cols-2 gap-4 mb-6">
             <button onclick="sendCommandChain(['e102', 'e2'])" class="py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold">Clock & E2</button>
             <button onclick="sendCommandChain(['e101', 'e2'])" class="py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold">Calendar & E2</button>
@@ -28,7 +27,7 @@
         </div>
 
         <div id="logContainer" class="mt-6 h-40 overflow-y-auto text-xs text-emerald-400 bg-black p-4 rounded-lg border border-slate-700">
-            <div>Đã sẵn sàng. Vui lòng kết nối Bluetooth.</div>
+            <div>Sẵn sàng kết nối trực tiếp...</div>
         </div>
     </div>
 
@@ -43,24 +42,27 @@
 
         document.getElementById('connectBle').onclick = async () => {
             try {
-                addLog("Đang tìm thiết bị...");
-                // Bỏ qua lọc Service để kết nối trực tiếp với mọi thiết bị khả dụng
+                addLog("Đang mở trình quét thiết bị...");
+                // Kết nối không qua bộ lọc, để liệt kê tất cả thiết bị xung quanh
                 const device = await navigator.bluetooth.requestDevice({ 
                     acceptAllDevices: true,
                     optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] 
                 });
                 
+                addLog("Đã chọn: " + device.name);
                 const server = await device.gatt.connect();
-                addLog("Đã kết nối GATT, đang lấy dịch vụ...");
+                addLog("Kết nối GATT thành công!");
                 
-                // Lấy tất cả dịch vụ có sẵn trên thiết bị
+                // Cố gắng lấy dịch vụ trực tiếp
                 const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
                 bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
                 
-                addLog("Kết nối thành công tới Characteristic!");
+                addLog("Đã tìm thấy đặc tính điều khiển!");
             } catch (e) { 
-                addLog("Lỗi: " + e.message); 
-                addLog("Gợi ý: Hãy thử kết nối với thiết bị qua nRF Connect trước, sau đó mới bấm Kết nối trên web.");
+                addLog("Lỗi: " + e.message);
+                if (e.message.includes("Service not found")) {
+                    addLog("Lưu ý: Thiết bị chưa được kích hoạt dịch vụ điều khiển. Hãy thử nhấn nút trên thiết bị nếu có.");
+                }
             }
         };
 
@@ -71,7 +73,7 @@
                 try {
                     await bleCharacteristic.writeValue(encoder.encode(cmd));
                     addLog("Đã gửi: " + cmd);
-                    await new Promise(r => setTimeout(r, 300)); 
+                    await new Promise(r => setTimeout(r, 400)); 
                 } catch (e) { addLog("Lỗi gửi " + cmd + ": " + e.message); }
             }
         }

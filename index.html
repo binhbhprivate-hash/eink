@@ -10,6 +10,7 @@
         .nav-card { background: #1e293b; border: 1px solid #334155; }
         .btn-action { transition: all 0.2s; }
         .btn-action:hover { transform: translateY(-2px); filter: brightness(1.2); }
+        #logContainer { font-family: 'Courier New', Courier, monospace; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -43,17 +44,33 @@
         </div>
 
         <!-- Các nút bổ sung giống trang gốc -->
-        <div class="flex gap-4">
+        <div class="flex gap-4 mb-8">
             <button onclick="sendCommand('clear')" class="flex-1 py-3 bg-red-900/30 text-red-300 border border-red-800 rounded-2xl font-bold">Xóa màn hình</button>
             <button onclick="sendCommand('reset')" class="flex-1 py-3 bg-slate-700 text-slate-300 rounded-2xl font-bold">Khởi động lại</button>
+        </div>
+
+        <!-- Khu vực Nhật ký hoạt động -->
+        <div class="nav-card p-6 rounded-3xl">
+            <h2 class="text-sm font-semibold mb-3 text-slate-400 uppercase tracking-wider">Nhật ký (Log)</h2>
+            <div id="logContainer" class="h-32 overflow-y-auto text-xs text-emerald-400 bg-black/30 p-4 rounded-xl border border-slate-700">
+                <div class="opacity-50">Hệ thống sẵn sàng...</div>
+            </div>
         </div>
     </div>
 
     <script>
         let bleDevice = null;
+        const logContainer = document.getElementById('logContainer');
+
+        function addLog(message) {
+            const time = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `<div>[${time}] ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
 
         document.getElementById('connectBle').onclick = async () => {
             try {
+                addLog("Đang quét thiết bị...");
                 bleDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true, 
                     optionalServices: ['generic_access'] 
@@ -63,8 +80,10 @@
                 const status = document.getElementById('bleStatus');
                 status.innerText = "Đã kết nối";
                 status.className = "px-3 py-1 text-xs font-bold bg-green-900 text-green-300 rounded-full border border-green-700";
+                addLog("Kết nối thành công tới: " + bleDevice.name);
             } catch (error) {
                 console.error(error);
+                addLog("Lỗi: " + error.message);
                 alert("Không thể kết nối Bluetooth!");
             }
         };
@@ -74,8 +93,8 @@
                 alert("Vui lòng kết nối Bluetooth trước khi thực hiện lệnh!");
                 return;
             }
+            addLog("Đang gửi lệnh: " + cmd);
             console.log("Gửi lệnh: " + cmd);
-            alert("Đã gửi lệnh: " + cmd);
         }
     </script>
 </body>

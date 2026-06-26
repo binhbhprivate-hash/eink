@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-ink Dashboard Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: white; }
+        .card { background: #1e293b; border-radius: 1.5rem; }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+
+    <div class="max-w-md mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-3xl font-extrabold text-white">E-ink Control</h1>
+            <p class="text-slate-400">Điều khiển màn hình của bạn</p>
+        </header>
+
+        <!-- Bảng điều khiển chính -->
+        <div class="card p-8 mb-6 border border-slate-700">
+            <div class="flex items-center justify-between mb-6">
+                <span class="text-sm text-slate-400">Kết nối:</span>
+                <span id="bleStatus" class="px-3 py-1 text-xs font-bold bg-red-500/20 text-red-400 rounded-full">Ngắt kết nối</span>
+            </div>
+
+            <button id="connectBle" class="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-2xl font-bold transition mb-6">
+                Kết nối Bluetooth
+            </button>
+
+            <select id="contentSelector" class="w-full bg-slate-800 text-white p-4 rounded-xl mb-4 border border-slate-600">
+                <option value="clock">Đồng hồ & Lịch</option>
+                <option value="football">Tỷ số bóng đá</option>
+                <option value="weather">Thời tiết</option>
+            </select>
+
+            <button onclick="sendCommand()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-bold transition">
+                Cập nhật lên màn hình
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Mẫu hàm kết nối Bluetooth (Web Bluetooth API)
+        document.getElementById('connectBle').onclick = async () => {
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: ['battery_service'] // Thay bằng service của bạn
+                });
+                document.getElementById('bleStatus').innerText = "Đã kết nối";
+                document.getElementById('bleStatus').className = "px-3 py-1 text-xs font-bold bg-green-500/20 text-green-400 rounded-full";
+            } catch (error) {
+                console.error(error);
+            }
+        };
+
+        function sendCommand() {
+            const content = document.getElementById('contentSelector').value;
+            console.log("Gửi lệnh qua Bluetooth: " + content);
+            alert("Đã gửi lệnh: " + content + " đến màn hình!");
+        }
+    </script>
+</body>
+</html>

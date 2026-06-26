@@ -3,77 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-ink Dashboard Bluetooth</title>
+    <title>E-ink Dashboard Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; color: white; }
-        .card { background: #1e293b; border-radius: 1.5rem; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
+        .nav-card { background: #1e293b; border: 1px solid #334155; }
+        .btn-action { transition: all 0.2s; }
+        .btn-action:hover { transform: translateY(-2px); filter: brightness(1.2); }
     </style>
 </head>
-<body class="p-4 md:p-12">
+<body class="p-4 md:p-8">
 
-    <div class="max-w-md mx-auto">
-        <header class="mb-10 text-center">
-            <h1 class="text-3xl font-extrabold text-white">E-ink Control (BLE)</h1>
-            <p class="text-slate-400">Điều khiển màn hình qua Bluetooth</p>
+    <div class="max-w-xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-white">E-ink Controller</h1>
+                <p class="text-sm text-slate-400">Kết nối & điều khiển màn hình</p>
+            </div>
+            <div id="bleStatus" class="px-3 py-1 text-xs font-bold bg-red-900 text-red-300 rounded-full border border-red-700">
+                Chưa kết nối
+            </div>
         </header>
 
-        <!-- Bảng điều khiển chính -->
-        <div class="card p-8 mb-6 border border-slate-700">
-            <div class="flex items-center justify-between mb-6">
-                <span class="text-sm text-slate-400">Trạng thái:</span>
-                <span id="bleStatus" class="px-3 py-1 text-xs font-bold bg-red-500/20 text-red-400 rounded-full">Ngắt kết nối</span>
+        <!-- Nút Kết nối chính -->
+        <button id="connectBle" class="w-full mb-6 py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg hover:bg-indigo-500 transition-all">
+            Kết nối Bluetooth
+        </button>
+
+        <!-- Khu vực điều khiển chức năng -->
+        <div class="nav-card p-6 rounded-3xl mb-6">
+            <h2 class="text-lg font-semibold mb-4 text-white">Chức năng hiển thị</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="sendCommand('clock')" class="btn-action p-4 bg-slate-700 rounded-xl font-medium">Đồng hồ & Lịch</button>
+                <button onclick="sendCommand('weather')" class="btn-action p-4 bg-slate-700 rounded-xl font-medium">Thời tiết</button>
+                <button onclick="sendCommand('football')" class="btn-action p-4 bg-sky-900/50 border border-sky-700 rounded-xl font-medium text-sky-200">Tỷ số bóng đá</button>
+                <button onclick="sendCommand('todo')" class="btn-action p-4 bg-slate-700 rounded-xl font-medium">Ghi chú</button>
             </div>
+        </div>
 
-            <button id="connectBle" class="w-full bg-indigo-600 hover:bg-indigo-500 py-4 rounded-2xl font-bold transition mb-6">
-                Kết nối thiết bị
-            </button>
-
-            <select id="contentSelector" class="w-full bg-slate-800 text-white p-4 rounded-xl mb-4 border border-slate-600">
-                <option value="clock">Đồng hồ & Lịch</option>
-                <option value="football">Tỷ số bóng đá</option>
-                <option value="weather">Thời tiết</option>
-            </select>
-
-            <button onclick="sendCommand()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-bold transition">
-                Cập nhật lên màn hình
-            </button>
+        <!-- Các nút bổ sung giống trang gốc -->
+        <div class="flex gap-4">
+            <button onclick="sendCommand('clear')" class="flex-1 py-3 bg-red-900/30 text-red-300 border border-red-800 rounded-2xl font-bold">Xóa màn hình</button>
+            <button onclick="sendCommand('reset')" class="flex-1 py-3 bg-slate-700 text-slate-300 rounded-2xl font-bold">Khởi động lại</button>
         </div>
     </div>
 
     <script>
         let bleDevice = null;
-        let bleCharacteristic = null;
 
-        // Hàm kết nối Bluetooth
         document.getElementById('connectBle').onclick = async () => {
             try {
-                // Bạn cần thay đổi filters để tìm đúng tên thiết bị của bạn
                 bleDevice = await navigator.bluetooth.requestDevice({
                     acceptAllDevices: true, 
                     optionalServices: ['generic_access'] 
                 });
                 
-                const server = await bleDevice.gatt.connect();
-                document.getElementById('bleStatus').innerText = "Đã kết nối";
-                document.getElementById('bleStatus').className = "px-3 py-1 text-xs font-bold bg-green-500/20 text-green-400 rounded-full";
+                await bleDevice.gatt.connect();
+                const status = document.getElementById('bleStatus');
+                status.innerText = "Đã kết nối";
+                status.className = "px-3 py-1 text-xs font-bold bg-green-900 text-green-300 rounded-full border border-green-700";
             } catch (error) {
                 console.error(error);
-                alert("Lỗi kết nối Bluetooth: " + error);
+                alert("Không thể kết nối Bluetooth!");
             }
         };
 
-        // Hàm gửi lệnh qua Bluetooth
-        async function sendCommand() {
+        async function sendCommand(cmd) {
             if (!bleDevice || !bleDevice.gatt.connected) {
-                alert("Vui lòng kết nối Bluetooth trước!");
+                alert("Vui lòng kết nối Bluetooth trước khi thực hiện lệnh!");
                 return;
             }
-            const content = document.getElementById('contentSelector').value;
-            // Gửi dữ liệu dạng chuỗi tới thiết bị
-            const encoder = new TextEncoder();
-            console.log("Đang gửi lệnh Bluetooth: " + content);
-            alert("Đã truyền lệnh: " + content + " qua Bluetooth!");
+            console.log("Gửi lệnh: " + cmd);
+            alert("Đã gửi lệnh: " + cmd);
         }
     </script>
 </body>

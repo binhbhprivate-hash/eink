@@ -43,18 +43,27 @@
 
         document.getElementById('connectBle').onclick = async () => {
             try {
+                addLog("Đang tìm thiết bị...");
+                // Bỏ qua lọc Service để kết nối trực tiếp với mọi thiết bị khả dụng
                 const device = await navigator.bluetooth.requestDevice({ 
-                    acceptAllDevices: true, 
+                    acceptAllDevices: true,
                     optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] 
                 });
+                
                 const server = await device.gatt.connect();
+                addLog("Đã kết nối GATT, đang lấy dịch vụ...");
+                
+                // Lấy tất cả dịch vụ có sẵn trên thiết bị
                 const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
                 bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-                addLog("Kết nối thành công!");
-            } catch (e) { addLog("Lỗi kết nối: " + e.message); }
+                
+                addLog("Kết nối thành công tới Characteristic!");
+            } catch (e) { 
+                addLog("Lỗi: " + e.message); 
+                addLog("Gợi ý: Hãy thử kết nối với thiết bị qua nRF Connect trước, sau đó mới bấm Kết nối trên web.");
+            }
         };
 
-        // Gửi chuỗi nhiều lệnh liên tiếp
         async function sendCommandChain(commands) {
             if (!bleCharacteristic) return alert("Chưa kết nối!");
             const encoder = new TextEncoder();
@@ -62,12 +71,11 @@
                 try {
                     await bleCharacteristic.writeValue(encoder.encode(cmd));
                     addLog("Đã gửi: " + cmd);
-                    await new Promise(r => setTimeout(r, 300)); // Delay 300ms giữa các lệnh
+                    await new Promise(r => setTimeout(r, 300)); 
                 } catch (e) { addLog("Lỗi gửi " + cmd + ": " + e.message); }
             }
         }
 
-        // Gửi 1 lệnh đơn
         async function sendCommand(cmd) {
             sendCommandChain([cmd]);
         }

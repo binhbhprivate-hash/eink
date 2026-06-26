@@ -42,27 +42,34 @@
 
         document.getElementById('connectBle').onclick = async () => {
             try {
-                addLog("Đang mở trình quét thiết bị...");
-                // Kết nối không qua bộ lọc, để liệt kê tất cả thiết bị xung quanh
+                addLog("Đang quét thiết bị...");
+                // Bỏ hoàn toàn optionalServices để tránh lỗi UUID lúc bắt đầu
                 const device = await navigator.bluetooth.requestDevice({ 
-                    acceptAllDevices: true,
-                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb'] 
+                    acceptAllDevices: true
                 });
                 
                 addLog("Đã chọn: " + device.name);
                 const server = await device.gatt.connect();
-                addLog("Kết nối GATT thành công!");
+                addLog("Kết nối GATT thành công! Đang truy vấn Service...");
                 
-                // Cố gắng lấy dịch vụ trực tiếp
-                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-                bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+                // Lấy toàn bộ dịch vụ có sẵn thay vì chỉ định UUID
+                const services = await server.getPrimaryServices();
+                addLog("Tìm thấy " + services.length + " dịch vụ.");
+
+                // Thử tìm service khớp với đuôi ffe0
+                let targetService = services.find(s => s.uuid.includes('ffe0'));
                 
-                addLog("Đã tìm thấy đặc tính điều khiển!");
+                if (!targetService) {
+                    addLog("Không tìm thấy Service ffe0. Đang thử dịch vụ đầu tiên...");
+                    targetService = services[0];
+                }
+
+                const characteristics = await targetService.getCharacteristics();
+                bleCharacteristic = characteristics.find(c => c.uuid.includes('ffe1')) || characteristics[0];
+                
+                addLog("Đã kết nối Characteristic: " + bleCharacteristic.uuid);
             } catch (e) { 
                 addLog("Lỗi: " + e.message);
-                if (e.message.includes("Service not found")) {
-                    addLog("Lưu ý: Thiết bị chưa được kích hoạt dịch vụ điều khiển. Hãy thử nhấn nút trên thiết bị nếu có.");
-                }
             }
         };
 
